@@ -1,0 +1,99 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+
+    // The update only adds the caller to `field`, and changes nothing else.
+    function onlyAddsSelf(field) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([field])
+        && request.resource.data[field].hasAll(resource.data[field])
+        && request.resource.data[field].size() == resource.data[field].size() + 1
+        && me() in request.resource.data[field];
+    }
+    // The update only removes the caller from `field`.
+    function onlyRemovesSelf(field) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([field])
+        && resource.data[field].hasAll(request.resource.data[field])
+        && request.resource.data[field].size() == resource.data[field].size() - 1
+        && !(me() in request.resource.data[field]);
+    }
+    function onlyChanges(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+
+    // ── Users: public name, private settings & exams ──
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && me() == uid;
+      match /{sub=**} {
+        allow read, write: if signedIn() && me() == uid;
+      }
+    }
+
+    // ── Roadmaps ──
+    match /roadmaps/{rid} {
+      function roadmapMember() {
+        return signedIn() && me() in get(/databases/$(database)/documents/roadmaps/$(rid)).data.memberIds;
+      }
+      allow read: if signedIn() && me() in resource.data.memberIds;
+      allow create: if signedIn()
+        && request.resource.data.ownerId == me()
+        && request.resource.data.memberIds == [me()];
+      allow update: if signedIn() && (
+        (resource.data.ownerId == me() && request.resource.data.ownerId == me())
+        || onlyAddsSelf('memberIds')
+      );
+      allow delete: if signedIn() && resource.data.ownerId == me();
+
+      match /progress/{uid} {
+        allow read: if roadmapMember();
+        allow write: if roadmapMember() && me() == uid;
+      }
+      match /items/{itemId} {
+        allow read: if roadmapMember();
+        allow create: if roadmapMember() && request.resource.data.authorId == me();
+        allow update, delete: if roadmapMember() && resource.data.authorId == me();
+      }
+    }
+
+    // ── Circles ──
+    match /circles/{cid} {
+      function circleMember() {
+        return signedIn() && me() in get(/databases/$(database)/documents/circles/$(cid)).data.memberIds;
+      }
+      allow read: if signedIn() && me() in resource.data.memberIds;
+      allow create: if signedIn()
+        && request.resource.data.ownerId == me()
+        && request.resource.data.memberIds == [me()];
+      allow update: if signedIn() && (
+        onlyAddsSelf('memberIds')
+        || onlyRemovesSelf('memberIds')
+        || (me() in resource.data.memberIds && onlyChanges(['lastMessage', 'lastAt']))
+        || (resource.data.ownerId == me() && request.resource.data.ownerId == me())
+      );
+      allow delete: if signedIn() && resource.data.ownerId == me();
+
+      match /messages/{mid} {
+        allow read: if circleMember();
+        allow create: if circleMember() && request.resource.data.senderId == me();
+        allow update: if circleMember() && onlyChanges(['votes'])
+          && request.resource.data.votes.diff(resource.data.get('votes', {})).affectedKeys().hasOnly([me()]);
+        allow delete: if circleMember() && resource.data.senderId == me();
+      }
+      match /sessions/{sid} {
+        allow read: if circleMember();
+        allow create: if circleMember() && request.resource.data.createdBy == me();
+        allow update, delete: if circleMember() && resource.data.createdBy == me();
+      }
+    }
+
+    // ── Invite codes: look up by exact code only (no listing) ──
+    match /invites/{code} {
+      allow get: if signedIn();
+      allow create: if signedIn() && request.resource.data.createdBy == me();
+    }
+  }
+}
