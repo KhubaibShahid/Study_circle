@@ -238,7 +238,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Row(children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _models.contains(_model) ? _model : null,
+                        key: ValueKey('$_model|${_models.length}'),
+                        initialValue: _models.contains(_model) ? _model : null,
                         isExpanded: true,
                         dropdownColor: AppColors.surface2,
                         decoration: const InputDecoration(

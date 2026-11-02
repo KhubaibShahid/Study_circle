@@ -119,7 +119,7 @@ class _CircleInfoScreenState extends State<CircleInfoScreen> {
                 final name = await Db.addMemberByEmail(c, email.text);
                 if (!ctx.mounted) return;
                 Navigator.pop(ctx);
-                toast(context, '$name added.');
+                if (mounted) toast(this.context, '$name added.');
               } catch (e) {
                 if (ctx.mounted) {
                   setSheet(() => loading = false);
