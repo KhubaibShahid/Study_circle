@@ -18,7 +18,7 @@ class RoadmapsScreen extends StatefulWidget {
 class _RoadmapsScreenState extends State<RoadmapsScreen> {
   late final Stream<List<Roadmap>> _roadmaps = Db.myRoadmaps();
 
-  void _openEditor({String title = '', String description = '', List<Section> sections = []}) {
+  void _openEditor({String title = '', String description = '', List<Section> sections = const []}) {
     Navigator.push(
       context,
       MaterialPageRoute(

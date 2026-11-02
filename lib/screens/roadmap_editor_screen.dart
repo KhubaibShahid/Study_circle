@@ -31,7 +31,7 @@ class RoadmapEditorScreen extends StatefulWidget {
     this.roadmapId,
     this.initialTitle = '',
     this.initialDescription = '',
-    this.initialSections = [],
+    this.initialSections = const [],
   });
 
   factory RoadmapEditorScreen.edit(Roadmap r) => RoadmapEditorScreen(
