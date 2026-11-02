@@ -18,7 +18,7 @@ class RoadmapsScreen extends StatefulWidget {
 class _RoadmapsScreenState extends State<RoadmapsScreen> {
   late final Stream<List<Roadmap>> _roadmaps = Db.myRoadmaps();
 
-  void _openEditor({String title = '', String description = '', List<Section> sections = const []}) {
+  void _openEditor({String title = '', String description = '', List<Section> sections = []}) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -34,7 +34,7 @@ class _RoadmapsScreenState extends State<RoadmapsScreen> {
   void _create() {
     showAppSheet(context, (ctx) {
       Widget option(IconData icon, String title, String sub, VoidCallback onTap, {Gradient? g}) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: EdgeInsets.only(bottom: 12),
             child: GlassCard(
               color: AppColors.surface2,
               onTap: () {
@@ -48,12 +48,12 @@ class _RoadmapsScreenState extends State<RoadmapsScreen> {
                   decoration: BoxDecoration(gradient: g ?? AppColors.gradient, borderRadius: BorderRadius.circular(14)),
                   child: Icon(icon, color: Colors.white),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                    const SizedBox(height: 3),
-                    Text(sub, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+                    Text(title, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                    SizedBox(height: 3),
+                    Text(sub, style: TextStyle(color: AppColors.muted, fontSize: 13)),
                   ]),
                 ),
               ]),
@@ -61,7 +61,7 @@ class _RoadmapsScreenState extends State<RoadmapsScreen> {
           );
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text('New roadmap', style: display(22)),
-        const SizedBox(height: 18),
+        SizedBox(height: 18),
         option(Icons.content_paste_rounded, 'Paste my roadmap', 'Already have a list? Paste it and we structure it.',
             _paste),
         option(Icons.auto_awesome, 'Generate with AI', 'Describe your goal, get a course plan.', _generate,
@@ -77,21 +77,21 @@ class _RoadmapsScreenState extends State<RoadmapsScreen> {
     showAppSheet(context, (ctx) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text('Paste your roadmap', style: display(22)),
-        const SizedBox(height: 8),
-        const Text(
+        SizedBox(height: 8),
+        Text(
           'Section headings on their own line, topics as "-" bullets or indented lines.',
           style: TextStyle(color: AppColors.muted),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         TextField(
           controller: ctl,
           minLines: 8,
           maxLines: 16,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText: '# JavaScript Deep Dive\n- Closures\n- Event loop\n\n# System Design\n- Caching\n- Load balancing',
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         GradientButton(
           label: 'Structure it',
           icon: Icons.auto_fix_high_rounded,
@@ -117,20 +117,20 @@ class _RoadmapsScreenState extends State<RoadmapsScreen> {
       return StatefulBuilder(builder: (ctx, setSheet) {
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text('Generate with AI', style: display(22)),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           TextField(
             controller: goal,
             minLines: 2,
             maxLines: 4,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
                 hintText: 'What do you want to learn? e.g. "Become a backend engineer with Node and system design"'),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextField(
             controller: time,
-            decoration: const InputDecoration(hintText: 'Time you have, e.g. "1 hour on weekdays, 3 months"'),
+            decoration: InputDecoration(hintText: 'Time you have, e.g. "1 hour on weekdays, 3 months"'),
           ),
-          const SizedBox(height: 18),
+          SizedBox(height: 18),
           GradientButton(
             label: loading ? 'Designing your course…' : 'Generate roadmap',
             icon: Icons.auto_awesome,
@@ -152,8 +152,8 @@ class _RoadmapsScreenState extends State<RoadmapsScreen> {
               }
             },
           ),
-          const SizedBox(height: 8),
-          const Text('You can edit everything before saving.',
+          SizedBox(height: 8),
+          Text('You can edit everything before saving.',
               textAlign: TextAlign.center, style: TextStyle(color: AppColors.muted, fontSize: 12)),
         ]);
       });
@@ -163,16 +163,16 @@ class _RoadmapsScreenState extends State<RoadmapsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Roadmaps')),
+      appBar: AppBar(title: Text('Roadmaps')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _create,
-        icon: const Icon(Icons.add),
-        label: const Text('New roadmap'),
+        icon: Icon(Icons.add),
+        label: Text('New roadmap'),
       ),
       body: StreamBuilder<List<Roadmap>>(
         stream: _roadmaps,
         builder: (context, snap) {
-          if (!snap.hasData) return const Loader();
+          if (!snap.hasData) return Loader();
           final list = snap.data!;
           if (list.isEmpty) {
             return EmptyState(
@@ -183,9 +183,9 @@ class _RoadmapsScreenState extends State<RoadmapsScreen> {
             );
           }
           return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 100),
             itemCount: list.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            separatorBuilder: (_, __) => SizedBox(height: 12),
             itemBuilder: (_, i) => _RoadmapCard(roadmap: list[i]),
           );
         },
@@ -212,7 +212,7 @@ class _RoadmapCardState extends State<_RoadmapCard> {
       builder: (context, snap) {
         final done = snap.data ?? <String>{};
         return GlassCard(
-          padding: const EdgeInsets.all(18),
+          padding: EdgeInsets.all(18),
           onTap: () => Navigator.push(
               context, MaterialPageRoute(builder: (_) => RoadmapDetailScreen(roadmapId: r.id))),
           child: Row(children: [
@@ -220,13 +220,13 @@ class _RoadmapCardState extends State<_RoadmapCard> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(r.title, style: display(18)),
                 if (r.description.isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(r.description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+                      style: TextStyle(color: AppColors.muted, fontSize: 13)),
                 ],
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Wrap(spacing: 8, runSpacing: 6, children: [
                   Pill('${r.sections.length} sections', icon: Icons.layers_outlined),
                   Pill('${r.doneCount(done)}/${r.topicCount} topics',
@@ -235,7 +235,7 @@ class _RoadmapCardState extends State<_RoadmapCard> {
                 ]),
               ]),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             ProgressRing(value: r.progress(done), size: 64),
           ]),
         );

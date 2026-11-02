@@ -44,12 +44,12 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
     return StreamBuilder<Roadmap?>(
       stream: _roadmap,
       builder: (context, rs) {
-        if (rs.connectionState == ConnectionState.waiting) return const Scaffold(body: Loader());
+        if (rs.connectionState == ConnectionState.waiting) return Scaffold(body: Loader());
         final r = rs.data;
         if (r == null) {
           return Scaffold(
             appBar: AppBar(),
-            body: const EmptyState(
+            body: EmptyState(
                 icon: Icons.search_off, title: 'Roadmap not found', subtitle: 'It may have been deleted.'),
           );
         }
@@ -61,9 +61,9 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
               PopupMenuButton<String>(
                 onSelected: (v) => _menu(v, r),
                 itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'focus', child: Text('Set as daily focus')),
-                  if (isOwner) const PopupMenuItem(value: 'edit', child: Text('Edit roadmap')),
-                  if (isOwner) const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                  PopupMenuItem(value: 'focus', child: Text('Set as daily focus')),
+                  if (isOwner) PopupMenuItem(value: 'edit', child: Text('Edit roadmap')),
+                  if (isOwner) PopupMenuItem(value: 'delete', child: Text('Delete')),
                 ],
               ),
             ],
@@ -76,7 +76,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                 stream: _exams,
                 builder: (context, es) {
                   final best = <String, ExamResult>{};
-                  for (final e in es.data ?? const <ExamResult>[]) {
+                  for (final e in es.data ?? <ExamResult>[]) {
                     final cur = best[e.sectionId];
                     if (cur == null || e.pct > cur.pct) best[e.sectionId] = e;
                   }
@@ -84,10 +84,10 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                   final firstOpen = r.sections.indexWhere((s) => !s.isComplete(done) || best[s.id]?.passed != true);
 
                   return ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+                    padding: EdgeInsets.fromLTRB(20, 8, 20, 40),
                     children: [
                       _Header(roadmap: r, done: done, passed: passed),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       Row(children: [
                         Expanded(
                           child: GhostButton(
@@ -97,7 +97,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                                 MaterialPageRoute(builder: (_) => TutorScreen(roadmapId: r.id, standalone: true))),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        SizedBox(width: 10),
                         Expanded(
                           child: GhostButton(
                             label: 'Daily focus',
@@ -106,7 +106,7 @@ class _RoadmapDetailScreenState extends State<RoadmapDetailScreen> {
                           ),
                         ),
                       ]),
-                      const SectionLabel('Syllabus'),
+                      SectionLabel('Syllabus'),
                       for (var i = 0; i < r.sections.length; i++)
                         _SectionCard(
                           roadmap: r,
@@ -138,10 +138,10 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget stat(String value, String label) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(value, style: display(20)),
-          Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+          Text(label, style: TextStyle(color: AppColors.muted, fontSize: 12)),
         ]);
     return GlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(20),
       child: Row(children: [
         ProgressRing(
           value: roadmap.progress(done),
@@ -149,25 +149,25 @@ class _Header extends StatelessWidget {
           stroke: 10,
           center: Column(mainAxisSize: MainAxisSize.min, children: [
             Text('${(roadmap.progress(done) * 100).round()}%', style: display(26)),
-            const Text('complete', style: TextStyle(color: AppColors.muted, fontSize: 11)),
+            Text('complete', style: TextStyle(color: AppColors.muted, fontSize: 11)),
           ]),
         ),
-        const SizedBox(width: 22),
+        SizedBox(width: 22),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (roadmap.description.isNotEmpty) ...[
               Text(roadmap.description,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 13, height: 1.4)),
-              const SizedBox(height: 12),
+                  style: TextStyle(color: AppColors.muted, fontSize: 13, height: 1.4)),
+              SizedBox(height: 12),
             ],
             Row(children: [
               Expanded(child: stat('${roadmap.doneCount(done)}/${roadmap.topicCount}', 'topics')),
               Expanded(child: stat('$passed/${roadmap.sections.length}', 'exams passed')),
             ]),
             if (roadmap.isShared) ...[
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Pill('Shared with ${roadmap.memberIds.length - 1} classmates', color: AppColors.pink, icon: Icons.groups),
             ],
           ]),
@@ -185,7 +185,7 @@ class _SectionCard extends StatelessWidget {
   final ExamResult? best;
   final bool initiallyExpanded;
 
-  const _SectionCard({
+  _SectionCard({
     required this.roadmap,
     required this.section,
     required this.index,
@@ -199,7 +199,7 @@ class _SectionCard extends StatelessWidget {
     final complete = section.isComplete(done);
     final examPassed = best?.passed == true;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: 12),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -210,9 +210,9 @@ class _SectionCard extends StatelessWidget {
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
             initiallyExpanded: initiallyExpanded,
-            tilePadding: const EdgeInsets.fromLTRB(16, 6, 12, 6),
-            childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 14),
-            shape: const RoundedRectangleBorder(),
+            tilePadding: EdgeInsets.fromLTRB(16, 6, 12, 6),
+            childrenPadding: EdgeInsets.fromLTRB(8, 0, 8, 14),
+            shape: RoundedRectangleBorder(),
             leading: Container(
               width: 38,
               height: 38,
@@ -223,24 +223,24 @@ class _SectionCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: examPassed
-                  ? const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 22)
-                  : Text('${index + 1}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                  ? Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 22)
+                  : Text('${index + 1}', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
             ),
-            title: Text(section.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            title: Text(section.title, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             subtitle: Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: EdgeInsets.only(top: 8),
               child: Row(children: [
                 Expanded(child: GradientBar(value: section.progress(done), height: 6)),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Text('${section.doneCount(done)}/${section.topics.length}',
-                    style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+                    style: TextStyle(color: AppColors.muted, fontSize: 12)),
               ]),
             ),
             children: [
               for (final t in section.topics) _TopicRow(roadmap: roadmap, section: section, topic: t, done: done),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                padding: EdgeInsets.symmetric(horizontal: 8),
                 child: complete
                     ? GradientButton(
                         label: best == null
@@ -248,18 +248,18 @@ class _SectionCard extends StatelessWidget {
                             : 'Retake exam · best ${best!.score}/${best!.total} (${gradeFor(best!.pct)})',
                         icon: Icons.quiz_rounded,
                         gradient: examPassed
-                            ? const LinearGradient(colors: [AppColors.success, AppColors.accent])
+                            ? LinearGradient(colors: [AppColors.success, AppColors.accent])
                             : AppColors.warmGradient,
                         onPressed: () => Navigator.push(context,
                             MaterialPageRoute(builder: (_) => ExamScreen(roadmap: roadmap, section: section))),
                       )
                     : Container(
-                        padding: const EdgeInsets.all(14),
+                        padding: EdgeInsets.all(14),
                         decoration: BoxDecoration(
                           color: AppColors.surface2,
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: const Row(children: [
+                        child: Row(children: [
                           Icon(Icons.lock_outline_rounded, color: AppColors.muted, size: 20),
                           SizedBox(width: 10),
                           Expanded(
@@ -288,7 +288,7 @@ class _TopicRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDone = done.contains(topic.id);
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+      contentPadding: EdgeInsets.symmetric(horizontal: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       leading: GestureDetector(
         onTap: () async {
@@ -296,7 +296,7 @@ class _TopicRow extends StatelessWidget {
           Reminders.syncDaily();
         },
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
+          duration: Duration(milliseconds: 250),
           width: 26,
           height: 26,
           decoration: BoxDecoration(
@@ -304,7 +304,7 @@ class _TopicRow extends StatelessWidget {
             gradient: isDone ? AppColors.gradient : null,
             border: isDone ? null : Border.all(color: AppColors.muted, width: 2),
           ),
-          child: isDone ? const Icon(Icons.check_rounded, size: 17, color: Colors.white) : null,
+          child: isDone ? Icon(Icons.check_rounded, size: 17, color: Colors.white) : null,
         ),
       ),
       title: Text(
@@ -315,7 +315,7 @@ class _TopicRow extends StatelessWidget {
           decorationColor: AppColors.muted,
         ),
       ),
-      trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+      trailing: Icon(Icons.chevron_right_rounded, color: AppColors.muted),
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => TopicScreen(roadmap: roadmap, section: section, topic: topic)),

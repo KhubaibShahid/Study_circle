@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:http/http.dart' as http;
 
@@ -32,6 +33,7 @@ class AI {
     required List<Map<String, dynamic>> contents,
     String? system,
     bool json = false,
+    double? temperature,
   }) async {
     final s = await Db.settings();
     if (s.geminiKey.trim().isEmpty) {
@@ -47,7 +49,7 @@ class AI {
       },
       'contents': contents,
       'generationConfig': {
-        'temperature': json ? 0.5 : 0.7,
+        'temperature': temperature ?? (json ? 0.5 : 0.7),
         if (json) 'responseMimeType': 'application/json',
       },
     };
@@ -92,6 +94,37 @@ class AI {
       .replaceAll(RegExp(r'^#{1,6}\s*', multiLine: true), '')
       .replaceAll(RegExp(r'^\*\s', multiLine: true), '- ');
 
+  // ───────────────────────── Models ─────────────────────────
+  static const fallbackModels = [
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-pro',
+  ];
+
+  /// Text models this key can use, newest first. Throws if the key is invalid.
+  static Future<List<String>> listModels(String key) async {
+    final r = await http.get(
+      Uri.parse('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200'),
+      headers: {'x-goog-api-key': key.trim()},
+    ).timeout(const Duration(seconds: 20));
+    final data = jsonDecode(r.body) as Map<String, dynamic>;
+    if (r.statusCode != 200) {
+      throw AiException((data['error'] as Map?)?['message']?.toString() ?? 'Invalid API key');
+    }
+    final skip = RegExp(r'embedding|tts|image|audio|live|vision|aqa|learnlm|computer-use|robotics|native');
+    final names = <String>[];
+    for (final m in (data['models'] as List? ?? const [])) {
+      final mm = m as Map;
+      final methods = (mm['supportedGenerationMethods'] as List?)?.map((e) => e.toString()) ?? const [];
+      final name = (mm['name'] ?? '').toString().replaceFirst('models/', '');
+      if (!methods.contains('generateContent')) continue;
+      if (!name.startsWith('gemini') || skip.hasMatch(name)) continue;
+      names.add(name);
+    }
+    names.sort((a, b) => b.compareTo(a));
+    return names.isEmpty ? fallbackModels : names;
+  }
+
   // ───────────────────────── Tutor ─────────────────────────
   static Future<String> tutor(List<ChatTurn> history, {Roadmap? roadmap, Set<String> done = const {}}) {
     final sb = StringBuffer()
@@ -131,7 +164,22 @@ class AI {
   }
 
   // ───────────────────────── Exams ─────────────────────────
-  static Future<List<ExamQuestion>> generateExam(Roadmap roadmap, Section section, {int count = 10}) async {
+  static const _examAngles = [
+    'real-world debugging scenarios',
+    'design trade-offs and "which approach is better and why"',
+    'predicting the output or behaviour of short code snippets',
+    'edge cases and common misconceptions',
+    'comparing related concepts side by side',
+    'applying the concept to a small project',
+    'performance and best practices',
+    'interview-style conceptual questions',
+  ];
+
+  static Future<List<ExamQuestion>> generateExam(Roadmap roadmap, Section section,
+      {int count = 10, List<String> avoid = const []}) async {
+    final rnd = Random();
+    final angles = [..._examAngles]..shuffle(rnd);
+    final recent = avoid.take(40).toList();
     final prompt = '''
 Create a university-style section exam for a self-learner.
 Roadmap: ${roadmap.title}
@@ -139,15 +187,17 @@ Section: ${section.title}
 Topics covered:
 ${section.topics.map((t) => '- ${t.title}').join('\n')}
 
-Write exactly $count multiple-choice questions that test real understanding, not trivia:
-mix conceptual questions, practical scenarios, and (where relevant) short code-reading questions.
+Write exactly $count NEW multiple-choice questions that test real understanding, not trivia.
+This attempt should focus especially on: ${angles.take(3).join('; ')}.
 Spread questions across all topics and vary difficulty from medium to hard.
 Each question has exactly 4 options and exactly one correct answer. Randomise the position of the correct option.
+${recent.isEmpty ? '' : 'The learner has ALREADY seen the questions below in earlier attempts. Do NOT repeat or lightly reword any of them — ask about different aspects:\n${recent.map((q) => '- $q').join('\n')}\n'}
+Variation seed: ${rnd.nextInt(1 << 30)}
 Return JSON only, in this shape:
 {"questions":[{"question":"...","options":["...","...","...","..."],"answer":0,"explanation":"why the answer is correct"}]}
 ''';
     final raw = await _call(
-      system: 'You are a strict but fair university examiner.',
+      system: 'You are a strict but fair university examiner who never reuses old exam papers.',
       contents: [
         {
           'role': 'user',
@@ -157,6 +207,7 @@ Return JSON only, in this shape:
         }
       ],
       json: true,
+      temperature: 1.0,
     );
     final list = (_parseJson(raw)['questions'] as List?) ?? const [];
     final out = <ExamQuestion>[];
@@ -165,13 +216,16 @@ Return JSON only, in this shape:
       final opts = ((m['options'] as List?) ?? const []).map((e) => e.toString()).toList();
       final ans = (m['answer'] as num?)?.toInt() ?? -1;
       if (opts.length < 2 || ans < 0 || ans >= opts.length) continue;
+      // Shuffle answer positions so the correct option isn't predictable.
+      final order = List.generate(opts.length, (i) => i)..shuffle(rnd);
       out.add(ExamQuestion(
         (m['question'] ?? '').toString(),
-        opts,
-        ans,
+        [for (final i in order) opts[i]],
+        order.indexOf(ans),
         (m['explanation'] ?? '').toString(),
       ));
     }
+    out.shuffle(rnd);
     if (out.length < 3) throw AiException('Could not build a proper exam. Please try again.');
     return out;
   }

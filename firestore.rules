@@ -24,7 +24,7 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
     }
 
-    // ── Users: public name, private settings & exams ──
+    // ── Users: public name/email, private settings & exams ──
     match /users/{uid} {
       allow read: if signedIn();
       allow write: if signedIn() && me() == uid;
@@ -61,32 +61,61 @@ service cloud.firestore {
 
     // ── Circles ──
     match /circles/{cid} {
-      function circleMember() {
-        return signedIn() && me() in get(/databases/$(database)/documents/circles/$(cid)).data.memberIds;
+      function isAdminOf(data) {
+        return me() == data.ownerId || me() in data.get('adminIds', []);
       }
+      function circleData() {
+        return get(/databases/$(database)/documents/circles/$(cid)).data;
+      }
+      function circleMember() { return signedIn() && me() in circleData().memberIds; }
+      function circleAdmin() { return signedIn() && isAdminOf(circleData()); }
+      // Classroom: only admins organise. Squad: every member can.
+      function canOrganize() {
+        return circleAdmin() || circleData().get('type', 'squad') != 'classroom';
+      }
+
       allow read: if signedIn() && me() in resource.data.memberIds;
       allow create: if signedIn()
         && request.resource.data.ownerId == me()
         && request.resource.data.memberIds == [me()];
       allow update: if signedIn() && (
-        onlyAddsSelf('memberIds')
-        || onlyRemovesSelf('memberIds')
+        // join with invite code (unless removed by an admin)
+        (onlyAddsSelf('memberIds') && !(me() in resource.data.get('bannedIds', [])))
+        // leave (the owner can't leave, only delete)
+        || (onlyRemovesSelf('memberIds') && me() != resource.data.ownerId)
+        // chat preview
         || (me() in resource.data.memberIds && onlyChanges(['lastMessage', 'lastAt']))
-        || (resource.data.ownerId == me() && request.resource.data.ownerId == me())
+        // owner manages everything (but stays owner and member)
+        || (me() == resource.data.ownerId
+            && request.resource.data.ownerId == resource.data.ownerId
+            && resource.data.ownerId in request.resource.data.memberIds)
+        // other admins: add/remove students, rename, change type — never touch admins
+        || (isAdminOf(resource.data)
+            && onlyChanges(['memberIds', 'bannedIds', 'name', 'type'])
+            && resource.data.ownerId in request.resource.data.memberIds
+            && resource.data.get('adminIds', []).toSet().intersection(
+                 resource.data.memberIds.toSet().difference(request.resource.data.memberIds.toSet())
+               ).size() == 0)
       );
       allow delete: if signedIn() && resource.data.ownerId == me();
 
       match /messages/{mid} {
         allow read: if circleMember();
-        allow create: if circleMember() && request.resource.data.senderId == me();
-        allow update: if circleMember() && onlyChanges(['votes'])
-          && request.resource.data.votes.diff(resource.data.get('votes', {})).affectedKeys().hasOnly([me()]);
-        allow delete: if circleMember() && resource.data.senderId == me();
+        allow create: if circleMember() && request.resource.data.senderId == me()
+          && (!(request.resource.data.type in ['poll', 'session']) || canOrganize());
+        allow update: if circleMember() && (
+          (onlyChanges(['votes'])
+            && request.resource.data.votes.diff(resource.data.get('votes', {})).affectedKeys().hasOnly([me()]))
+          || (resource.data.senderId == me() && resource.data.type == 'text' && onlyChanges(['text', 'editedAt']))
+          || ((resource.data.senderId == me() || circleAdmin()) && resource.data.type == 'session'
+              && onlyChanges(['text', 'startsAt', 'durationMin', 'editedAt']))
+        );
+        allow delete: if circleMember() && (resource.data.senderId == me() || circleAdmin());
       }
       match /sessions/{sid} {
         allow read: if circleMember();
-        allow create: if circleMember() && request.resource.data.createdBy == me();
-        allow update, delete: if circleMember() && resource.data.createdBy == me();
+        allow create: if circleMember() && request.resource.data.createdBy == me() && canOrganize();
+        allow update, delete: if circleMember() && (resource.data.createdBy == me() || circleAdmin());
       }
     }
 

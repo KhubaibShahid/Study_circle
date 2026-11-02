@@ -24,10 +24,10 @@ class _CirclesScreenState extends State<CirclesScreen> {
     showAppSheet(context, (ctx) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text('Study circles', style: display(22)),
-        const SizedBox(height: 6),
-        const Text('A circle is your class: group chat, polls, scheduled classes with alarms and a shared roadmap.',
+        SizedBox(height: 6),
+        Text('A circle is your class: group chat, polls, scheduled classes with alarms and a shared roadmap.',
             style: TextStyle(color: AppColors.muted, height: 1.4)),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
         GradientButton(
           label: 'Create a circle',
           icon: Icons.add_rounded,
@@ -36,7 +36,7 @@ class _CirclesScreenState extends State<CirclesScreen> {
             _createSheet();
           },
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         GhostButton(
           label: 'Join with invite code',
           icon: Icons.vpn_key_outlined,
@@ -52,29 +52,54 @@ class _CirclesScreenState extends State<CirclesScreen> {
   void _createSheet() {
     final name = TextEditingController();
     Roadmap? selected;
+    var type = 'squad';
     var loading = false;
     final roadmapsFuture = Db.myRoadmapsOnce();
     showAppSheet(context, (ctx) {
       return StatefulBuilder(builder: (ctx, setSheet) {
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text('Create a circle', style: display(22)),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           TextField(
             controller: name,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(hintText: 'Circle name, e.g. "Night Owls — DSA"'),
+            decoration: InputDecoration(hintText: 'Circle name, e.g. "Night Owls — DSA"'),
           ),
-          const SizedBox(height: 16),
-          const Text('Shared roadmap (optional)',
+          SizedBox(height: 16),
+          Text('Type', style: TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600)),
+          SizedBox(height: 8),
+          Row(children: [
+            Expanded(
+              child: _TypeCard(
+                icon: Icons.diversity_3_rounded,
+                title: 'Study squad',
+                subtitle: 'Everyone can chat, make polls and schedule classes. You are admin.',
+                selected: type == 'squad',
+                onTap: () => setSheet(() => type = 'squad'),
+              ),
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: _TypeCard(
+                icon: Icons.school_rounded,
+                title: 'Classroom',
+                subtitle: 'Only admins make polls and classes. Students chat.',
+                selected: type == 'classroom',
+                onTap: () => setSheet(() => type = 'classroom'),
+              ),
+            ),
+          ]),
+          SizedBox(height: 16),
+          Text('Shared roadmap (optional)',
               style: TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           FutureBuilder<List<Roadmap>>(
             future: roadmapsFuture,
             builder: (context, snap) {
-              final list = snap.data ?? const <Roadmap>[];
+              final list = snap.data ?? <Roadmap>[];
               return Wrap(spacing: 8, runSpacing: 8, children: [
                 ChoiceChip(
-                  label: const Text('None'),
+                  label: Text('None'),
                   selected: selected == null,
                   onSelected: (_) => setSheet(() => selected = null),
                 ),
@@ -87,10 +112,10 @@ class _CirclesScreenState extends State<CirclesScreen> {
               ]);
             },
           ),
-          const SizedBox(height: 8),
-          const Text('Everyone who joins gets this roadmap, and you can see each other\'s progress.',
+          SizedBox(height: 8),
+          Text('Everyone who joins gets this roadmap, and you can see each other\'s progress.',
               style: TextStyle(color: AppColors.muted, fontSize: 12)),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           GradientButton(
             label: 'Create circle',
             icon: Icons.groups_rounded,
@@ -99,7 +124,7 @@ class _CirclesScreenState extends State<CirclesScreen> {
               if (name.text.trim().isEmpty) return;
               setSheet(() => loading = true);
               try {
-                final id = await Db.createCircle(name.text.trim(), selected);
+                final id = await Db.createCircle(name.text.trim(), selected, type: type);
                 if (!ctx.mounted) return;
                 Navigator.pop(ctx);
                 _open(id);
@@ -123,9 +148,9 @@ class _CirclesScreenState extends State<CirclesScreen> {
       return StatefulBuilder(builder: (ctx, setSheet) {
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text('Join a circle', style: display(22)),
-          const SizedBox(height: 6),
-          const Text('Ask your friend for the 6-character invite code.', style: TextStyle(color: AppColors.muted)),
-          const SizedBox(height: 16),
+          SizedBox(height: 6),
+          Text('Ask your friend for the 6-character invite code.', style: TextStyle(color: AppColors.muted)),
+          SizedBox(height: 16),
           TextField(
             controller: code,
             textCapitalization: TextCapitalization.characters,
@@ -133,9 +158,9 @@ class _CirclesScreenState extends State<CirclesScreen> {
             maxLength: 6,
             style: display(28).copyWith(letterSpacing: 8),
             inputFormatters: [FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9]'))],
-            decoration: const InputDecoration(hintText: 'ABC123', counterText: ''),
+            decoration: InputDecoration(hintText: 'ABC123', counterText: ''),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           GradientButton(
             label: 'Join',
             icon: Icons.login_rounded,
@@ -164,16 +189,16 @@ class _CirclesScreenState extends State<CirclesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Circles')),
+      appBar: AppBar(title: Text('Circles')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _actions,
-        icon: const Icon(Icons.group_add_rounded),
-        label: const Text('New / Join'),
+        icon: Icon(Icons.group_add_rounded),
+        label: Text('New / Join'),
       ),
       body: StreamBuilder<List<Circle>>(
         stream: _circles,
         builder: (context, snap) {
-          if (!snap.hasData) return const Loader();
+          if (!snap.hasData) return Loader();
           final list = snap.data!;
           if (list.isEmpty) {
             return EmptyState(
@@ -185,33 +210,36 @@ class _CirclesScreenState extends State<CirclesScreen> {
             );
           }
           return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 100),
             itemCount: list.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            separatorBuilder: (_, __) => SizedBox(height: 10),
             itemBuilder: (_, i) {
               final c = list[i];
               return GlassCard(
                 onTap: () => _open(c.id),
                 child: Row(children: [
                   Avatar(c.name, size: 52),
-                  const SizedBox(width: 14),
+                  SizedBox(width: 14),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(children: [
                         Expanded(
                           child: Text(c.name,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                         ),
-                        Text(_when(c.lastAt), style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+                        Text(_when(c.lastAt), style: TextStyle(color: AppColors.muted, fontSize: 12)),
                       ]),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(c.lastMessage,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: AppColors.muted, fontSize: 13)),
-                      const SizedBox(height: 8),
+                          style: TextStyle(color: AppColors.muted, fontSize: 13)),
+                      SizedBox(height: 8),
                       Wrap(spacing: 6, children: [
+                        Pill(c.isClassroom ? 'Classroom' : 'Squad',
+                            color: AppColors.warning,
+                            icon: c.isClassroom ? Icons.school_rounded : Icons.diversity_3_rounded),
                         Pill('${c.memberIds.length} members', icon: Icons.person_outline),
                         if (c.roadmapTitle.isNotEmpty)
                           Pill(c.roadmapTitle, color: AppColors.pink, icon: Icons.route_rounded),
@@ -231,5 +259,47 @@ class _CirclesScreenState extends State<CirclesScreen> {
     final now = DateTime.now();
     if (t.year == now.year && t.month == now.month && t.day == now.day) return DateFormat('h:mm a').format(t);
     return DateFormat('d MMM').format(t);
+  }
+}
+
+
+class _TypeCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+  const _TypeCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        color: selected ? AppColors.primary.withValues(alpha: 0.14) : AppColors.surface2,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: selected ? AppColors.primary : Colors.transparent, width: 1.5),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(icon, color: selected ? AppColors.primary : AppColors.muted),
+            const SizedBox(height: 8),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text(subtitle, style: TextStyle(color: AppColors.muted, fontSize: 12, height: 1.35)),
+          ]),
+        ),
+      ),
+    );
   }
 }

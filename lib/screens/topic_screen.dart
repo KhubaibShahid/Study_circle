@@ -34,20 +34,20 @@ class _TopicScreenState extends State<TopicScreen> {
     showAppSheet(context, (ctx) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text(existing == null ? 'New note' : 'Edit note', style: display(22)),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         TextField(
             controller: title,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(hintText: 'Title')),
-        const SizedBox(height: 12),
+            decoration: InputDecoration(hintText: 'Title')),
+        SizedBox(height: 12),
         TextField(
           controller: body,
           minLines: 8,
           maxLines: 18,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(hintText: 'What did you learn? Key ideas, code, questions…'),
+          decoration: InputDecoration(hintText: 'What did you learn? Key ideas, code, questions…'),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         GradientButton(
           label: 'Save note',
           icon: Icons.check_rounded,
@@ -73,18 +73,18 @@ class _TopicScreenState extends State<TopicScreen> {
     showAppSheet(context, (ctx) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text('Add video or link', style: display(22)),
-        const SizedBox(height: 8),
-        const Text('YouTube links show a thumbnail and open in the YouTube app.',
+        SizedBox(height: 8),
+        Text('YouTube links show a thumbnail and open in the YouTube app.',
             style: TextStyle(color: AppColors.muted)),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         TextField(
           controller: url,
           keyboardType: TextInputType.url,
-          decoration: const InputDecoration(hintText: 'https://youtube.com/watch?v=…', prefixIcon: Icon(Icons.link)),
+          decoration: InputDecoration(hintText: 'https://youtube.com/watch?v=…', prefixIcon: Icon(Icons.link)),
         ),
-        const SizedBox(height: 12),
-        TextField(controller: title, decoration: const InputDecoration(hintText: 'Title (optional)')),
-        const SizedBox(height: 16),
+        SizedBox(height: 12),
+        TextField(controller: title, decoration: InputDecoration(hintText: 'Title (optional)')),
+        SizedBox(height: 16),
         GradientButton(
           label: 'Add',
           icon: Icons.add_rounded,
@@ -126,9 +126,9 @@ class _TopicScreenState extends State<TopicScreen> {
               title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(widget.topic.title, overflow: TextOverflow.ellipsis),
                 Text(widget.section.title,
-                    style: const TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w500)),
+                    style: TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w500)),
               ]),
-              bottom: const TabBar(
+              bottom: TabBar(
                 indicatorColor: AppColors.accent,
                 labelColor: AppColors.text,
                 unselectedLabelColor: AppColors.muted,
@@ -141,13 +141,13 @@ class _TopicScreenState extends State<TopicScreen> {
             body: StreamBuilder<List<Item>>(
               stream: _items,
               builder: (context, snap) {
-                if (!snap.hasData) return const Loader();
+                if (!snap.hasData) return Loader();
                 final notes = snap.data!.where((i) => i.isNote).toList();
                 final media = snap.data!.where((i) => !i.isNote).toList();
                 return TabBarView(children: [
                   _list(
                     notes,
-                    empty: const EmptyState(
+                    empty: EmptyState(
                       icon: Icons.edit_note_rounded,
                       title: 'No notes yet',
                       subtitle: 'Write what you learn in your own words — it is the fastest way to remember it.',
@@ -158,7 +158,7 @@ class _TopicScreenState extends State<TopicScreen> {
                   ),
                   _list(
                     media,
-                    empty: const EmptyState(
+                    empty: EmptyState(
                       icon: Icons.smart_display_rounded,
                       title: 'No videos yet',
                       subtitle: 'Save the YouTube lectures and articles you use for this topic.',
@@ -172,8 +172,8 @@ class _TopicScreenState extends State<TopicScreen> {
             ),
             bottomNavigationBar: SafeArea(
               child: Container(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                decoration: const BoxDecoration(
+                padding: EdgeInsets.fromLTRB(16, 10, 16, 10),
+                decoration: BoxDecoration(
                   color: AppColors.surface,
                   border: Border(top: BorderSide(color: AppColors.border)),
                 ),
@@ -195,13 +195,13 @@ class _TopicScreenState extends State<TopicScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: GradientButton(
                       label: done ? 'Completed' : 'Mark complete',
                       icon: done ? Icons.check_circle_rounded : Icons.check_rounded,
                       gradient: done
-                          ? const LinearGradient(colors: [AppColors.success, AppColors.accent])
+                          ? LinearGradient(colors: [AppColors.success, AppColors.accent])
                           : AppColors.gradient,
                       onPressed: () => _toggle(done),
                     ),
@@ -221,12 +221,12 @@ class _TopicScreenState extends State<TopicScreen> {
       required VoidCallback onAdd,
       required Widget Function(Item) itemBuilder}) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      padding: EdgeInsets.fromLTRB(20, 16, 20, 24),
       children: [
         GhostButton(label: addLabel, icon: Icons.add_rounded, onPressed: onAdd),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         if (items.isEmpty) empty,
-        for (final i in items) Padding(padding: const EdgeInsets.only(bottom: 12), child: itemBuilder(i)),
+        for (final i in items) Padding(padding: EdgeInsets.only(bottom: 12), child: itemBuilder(i)),
       ],
     );
   }
@@ -240,17 +240,17 @@ class _TopicScreenState extends State<TopicScreen> {
       ),
       onLongPress: () => _delete(n),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(n.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+        Text(n.title, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
         if (n.content.isNotEmpty) ...[
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(n.content,
               maxLines: 4,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppColors.muted, height: 1.45)),
+              style: TextStyle(color: AppColors.muted, height: 1.45)),
         ],
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         Text('${mine ? 'You' : n.authorName} · ${DateFormat('d MMM, h:mm a').format(n.createdAt)}',
-            style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+            style: TextStyle(color: AppColors.muted, fontSize: 12)),
       ]),
     );
   }
@@ -264,35 +264,35 @@ class _TopicScreenState extends State<TopicScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (yt != null)
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             child: AspectRatio(
               aspectRatio: 16 / 9,
               child: Stack(fit: StackFit.expand, children: [
                 Image.network('https://img.youtube.com/vi/$yt/hqdefault.jpg',
                     fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: AppColors.surface2)),
                 Container(color: Colors.black26),
-                const Center(child: Icon(Icons.play_circle_fill_rounded, size: 58, color: Colors.white)),
+                Center(child: Icon(Icons.play_circle_fill_rounded, size: 58, color: Colors.white)),
               ]),
             ),
           ),
         Padding(
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(14),
           child: Row(children: [
             if (yt == null) ...[
-              const Icon(Icons.link_rounded, color: AppColors.accent),
-              const SizedBox(width: 10),
+              Icon(Icons.link_rounded, color: AppColors.accent),
+              SizedBox(width: 10),
             ],
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(v.title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 3),
+                Text(v.title, style: TextStyle(fontWeight: FontWeight.w700)),
+                SizedBox(height: 3),
                 Text(v.url,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+                    style: TextStyle(color: AppColors.muted, fontSize: 12)),
               ]),
             ),
-            const Icon(Icons.open_in_new_rounded, size: 18, color: AppColors.muted),
+            Icon(Icons.open_in_new_rounded, size: 18, color: AppColors.muted),
           ]),
         ),
       ]),
@@ -313,7 +313,7 @@ class _NoteView extends StatelessWidget {
         actions: [
           if (onEdit != null)
             IconButton(
-              icon: const Icon(Icons.edit_outlined),
+              icon: Icon(Icons.edit_outlined),
               onPressed: () {
                 Navigator.pop(context);
                 onEdit!();
@@ -322,12 +322,12 @@ class _NoteView extends StatelessWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20),
         children: [
           Text('${item.authorName} · ${DateFormat('d MMM yyyy, h:mm a').format(item.createdAt)}',
-              style: const TextStyle(color: AppColors.muted, fontSize: 13)),
-          const SizedBox(height: 16),
-          SelectableText(item.content, style: const TextStyle(fontSize: 16, height: 1.6)),
+              style: TextStyle(color: AppColors.muted, fontSize: 13)),
+          SizedBox(height: 16),
+          SelectableText(item.content, style: TextStyle(fontSize: 16, height: 1.6)),
         ],
       ),
     );

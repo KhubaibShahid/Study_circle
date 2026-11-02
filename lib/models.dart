@@ -162,7 +162,10 @@ class Circle {
   final String id;
   final String name;
   final String ownerId;
+  final String type; // classroom | squad
   final List<String> memberIds;
+  final List<String> adminIds;
+  final List<String> bannedIds;
   final String inviteCode;
   final String? roadmapId;
   final String roadmapTitle;
@@ -173,7 +176,10 @@ class Circle {
     required this.id,
     required this.name,
     required this.ownerId,
+    required this.type,
     required this.memberIds,
+    required this.adminIds,
+    required this.bannedIds,
     required this.inviteCode,
     required this.roadmapId,
     required this.roadmapTitle,
@@ -181,13 +187,23 @@ class Circle {
     required this.lastAt,
   });
 
+  bool get isClassroom => type == 'classroom';
+  bool isOwner(String uid) => uid == ownerId;
+  bool isAdmin(String uid) => uid == ownerId || adminIds.contains(uid);
+
+  /// Classroom: only admins create polls and classes. Squad: everyone can.
+  bool canOrganize(String uid) => !isClassroom || isAdmin(uid);
+
   factory Circle.fromDoc(DocumentSnapshot<Map<String, dynamic>> d) {
     final m = d.data() ?? {};
     return Circle(
       id: d.id,
       name: m['name'] as String? ?? 'Circle',
       ownerId: m['ownerId'] as String? ?? '',
+      type: m['type'] as String? ?? 'squad',
       memberIds: _strList(m['memberIds']),
+      adminIds: _strList(m['adminIds']),
+      bannedIds: _strList(m['bannedIds']),
       inviteCode: m['inviteCode'] as String? ?? '',
       roadmapId: m['roadmapId'] as String?,
       roadmapTitle: m['roadmapTitle'] as String? ?? '',
@@ -212,6 +228,7 @@ class Message {
   final String? sessionId;
   final DateTime? startsAt;
   final int durationMin;
+  final bool edited;
 
   const Message({
     required this.id,
@@ -226,6 +243,7 @@ class Message {
     this.sessionId,
     this.startsAt,
     this.durationMin = 60,
+    this.edited = false,
   });
 
   factory Message.fromDoc(DocumentSnapshot<Map<String, dynamic>> d) {
@@ -244,6 +262,7 @@ class Message {
       sessionId: m['sessionId'] as String?,
       startsAt: m['startsAt'] is Timestamp ? (m['startsAt'] as Timestamp).toDate() : null,
       durationMin: (m['durationMin'] as num?)?.toInt() ?? 60,
+      edited: m['editedAt'] != null,
     );
   }
 }
@@ -292,6 +311,7 @@ class ExamResult {
   final int score;
   final int total;
   final DateTime createdAt;
+  final List<String> questions;
 
   const ExamResult({
     required this.id,
@@ -302,6 +322,7 @@ class ExamResult {
     required this.score,
     required this.total,
     required this.createdAt,
+    this.questions = const [],
   });
 
   double get pct => total == 0 ? 0 : score / total;
@@ -318,6 +339,7 @@ class ExamResult {
       score: (m['score'] as num?)?.toInt() ?? 0,
       total: (m['total'] as num?)?.toInt() ?? 0,
       createdAt: _ts(m['createdAt']),
+      questions: _strList(m['questions']),
     );
   }
 }

@@ -75,44 +75,44 @@ class _AuthScreenState extends State<AuthScreen> {
         Positioned(top: 180, left: -120, child: _blob(AppColors.accent, 260)),
         SafeArea(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+            padding: EdgeInsets.fromLTRB(24, 48, 24, 24),
             children: [
               Container(
                 width: 64,
                 height: 64,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(gradient: AppColors.gradient, borderRadius: BorderRadius.circular(20)),
-                child: const Icon(Icons.school_rounded, color: Colors.white, size: 34),
+                child: Icon(Icons.school_rounded, color: Colors.white, size: 34),
               ),
-              const SizedBox(height: 28),
+              SizedBox(height: 28),
               Text('StudyCircle', style: display(38)),
-              const SizedBox(height: 10),
-              const Text(
+              SizedBox(height: 10),
+              Text(
                 'Your self-made university.\nRoadmaps, classmates, class alarms, exams and an AI tutor — so learning never depends on mood.',
                 style: TextStyle(color: AppColors.muted, fontSize: 15, height: 1.5),
               ),
-              const SizedBox(height: 36),
+              SizedBox(height: 36),
               if (_signup) ...[
                 TextField(
                   controller: _name,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(hintText: 'Your name', prefixIcon: Icon(Icons.person_outline)),
+                  decoration: InputDecoration(hintText: 'Your name', prefixIcon: Icon(Icons.person_outline)),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
               ],
               TextField(
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(hintText: 'Email', prefixIcon: Icon(Icons.alternate_email)),
+                decoration: InputDecoration(hintText: 'Email', prefixIcon: Icon(Icons.alternate_email)),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               TextField(
                 controller: _pass,
                 obscureText: _hide,
                 onSubmitted: (_) => _submit(),
                 decoration: InputDecoration(
                   hintText: 'Password (6+ characters)',
-                  prefixIcon: const Icon(Icons.lock_outline),
+                  prefixIcon: Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
                     icon: Icon(_hide ? Icons.visibility_outlined : Icons.visibility_off_outlined),
                     onPressed: () => setState(() => _hide = !_hide),
@@ -120,17 +120,17 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
               if (_error != null) ...[
-                const SizedBox(height: 14),
-                Text(_error!, style: const TextStyle(color: AppColors.danger)),
+                SizedBox(height: 14),
+                Text(_error!, style: TextStyle(color: AppColors.danger)),
               ],
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               GradientButton(
                 label: _signup ? 'Create account' : 'Sign in',
                 icon: _signup ? Icons.rocket_launch_rounded : Icons.login_rounded,
                 loading: _loading,
                 onPressed: _submit,
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 TextButton(
                   onPressed: () => setState(() {
@@ -142,7 +142,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 if (!_signup)
                   TextButton(
                     onPressed: _reset,
-                    child: const Text('Forgot password', style: TextStyle(color: AppColors.muted)),
+                    child: Text('Forgot password', style: TextStyle(color: AppColors.muted)),
                   ),
               ]),
             ],

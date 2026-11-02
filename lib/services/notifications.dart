@@ -113,10 +113,33 @@ class Notifs {
         ),
       );
 
+  /// The two notification ids used for one class.
+  static List<int> sessionIds(String circleId, String sessionId) {
+    final base = _hash('$circleId/$sessionId');
+    return [base, base + 0x40000000];
+  }
+
+  static Future<void> cancelSession(String circleId, String sessionId) async {
+    for (final id in sessionIds(circleId, sessionId)) {
+      await _p.cancel(id);
+    }
+  }
+
+  /// Cancels class alarms that are no longer wanted (deleted classes, left circles).
+  static Future<void> keepOnlySessions(Set<int> keep) async {
+    final pending = await _p.pendingNotificationRequests();
+    for (final r in pending) {
+      if (r.id == dailyId || r.id == 99) continue;
+      if (!keep.contains(r.id)) await _p.cancel(r.id);
+    }
+  }
+
   /// Schedules a heads-up 15 minutes before and a ringing alarm at start time.
   static Future<void> scheduleSession(Session s, String circleName) async {
     final now = DateTime.now();
-    final base = _hash('${s.circleId}/${s.id}');
+    final base = sessionIds(s.circleId, s.id).first;
+    // Clear old times first in case the class was rescheduled.
+    await cancelSession(s.circleId, s.id);
     final time = DateFormat('h:mm a').format(s.startsAt);
     final mode = await _mode();
 

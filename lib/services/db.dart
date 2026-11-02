@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -6,6 +7,30 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models.dart';
 
 final _fs = FirebaseFirestore.instance;
+
+/// Keeps one live copy of the learner's progress per roadmap, so every screen
+/// updates instantly (before the server even answers) when a topic is ticked.
+class _ProgressCache {
+  Set<String>? value;
+  final _ctrl = StreamController<Set<String>>.broadcast();
+
+  _ProgressCache(DocumentReference<Map<String, dynamic>> ref) {
+    ref.snapshots().listen((d) {
+      value = Db._doneSet(d);
+      _ctrl.add(value!);
+    }, onError: (_) {});
+  }
+
+  Stream<Set<String>> stream() async* {
+    if (value != null) yield value!;
+    yield* _ctrl.stream;
+  }
+
+  void setLocal(Set<String> v) {
+    value = v;
+    _ctrl.add(v);
+  }
+}
 
 /// All Firestore access lives here.
 class Db {
@@ -27,7 +52,7 @@ class Db {
     final u = FirebaseAuth.instance.currentUser!;
     return _fs.collection('users').doc(u.uid).set({
       'name': myName,
-      'email': u.email ?? '',
+      'email': (u.email ?? '').toLowerCase(),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
@@ -35,10 +60,14 @@ class Db {
   static final Map<String, String> _nameCache = {};
   static Future<String> userName(String id) async {
     if (_nameCache.containsKey(id)) return _nameCache[id]!;
-    final d = await _fs.collection('users').doc(id).get();
-    final n = (d.data()?['name'] as String?) ?? 'Learner';
-    _nameCache[id] = n;
-    return n;
+    try {
+      final d = await _fs.collection('users').doc(id).get();
+      final n = (d.data()?['name'] as String?) ?? 'Learner';
+      _nameCache[id] = n;
+      return n;
+    } catch (_) {
+      return 'Learner';
+    }
   }
 
   // ───────────────────────── settings ─────────────────────────
@@ -75,12 +104,14 @@ class Db {
       'updatedAt': FieldValue.serverTimestamp(),
     };
     if (id == null) {
-      final ref = await _roadmaps.add({
+      final ref = _roadmaps.doc();
+      // Not awaited on purpose: the local cache updates instantly, the server catches up.
+      unawaited(ref.set({
         ...data,
         'ownerId': uid,
         'memberIds': [uid],
         'createdAt': FieldValue.serverTimestamp(),
-      });
+      }));
       return ref.id;
     }
     await _roadmaps.doc(id).update(data);
@@ -96,14 +127,29 @@ class Db {
   static Set<String> _doneSet(DocumentSnapshot<Map<String, dynamic>> d) =>
       Set<String>.from(((d.data()?['completed'] as List?) ?? const []).map((e) => e.toString()));
 
-  static Stream<Set<String>> progress(String rid) => _progress(rid).snapshots().map(_doneSet);
-  static Future<Set<String>> progressOnce(String rid, [String? user]) async =>
-      _doneSet(await _progress(rid, user).get());
+  static final Map<String, _ProgressCache> _pc = {};
+  static _ProgressCache _cache(String rid) => _pc.putIfAbsent('$uid/$rid', () => _ProgressCache(_progress(rid)));
 
-  static Future<void> setTopicDone(String rid, String topicId, bool done) => _progress(rid).set({
-        'completed': done ? FieldValue.arrayUnion([topicId]) : FieldValue.arrayRemove([topicId]),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+  static Stream<Set<String>> progress(String rid) => _cache(rid).stream();
+
+  static Future<Set<String>> progressOnce(String rid, [String? user]) async {
+    if (user == null || user == uid) {
+      final cached = _pc['$uid/$rid']?.value;
+      if (cached != null) return cached;
+    }
+    return _doneSet(await _progress(rid, user).get());
+  }
+
+  static Future<void> setTopicDone(String rid, String topicId, bool done) async {
+    final c = _cache(rid);
+    final next = <String>{...?c.value};
+    done ? next.add(topicId) : next.remove(topicId);
+    c.setLocal(next); // instant UI update everywhere
+    await _progress(rid).set({
+      'completed': done ? FieldValue.arrayUnion([topicId]) : FieldValue.arrayRemove([topicId]),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
 
   // ───────────────────────── notes & videos ─────────────────────────
   static CollectionReference<Map<String, dynamic>> _items(String rid) =>
@@ -144,8 +190,14 @@ class Db {
       _circles.where('memberIds', arrayContains: uid).snapshots().map(_sortCircles);
   static Future<List<Circle>> myCirclesOnce() async =>
       _sortCircles(await _circles.where('memberIds', arrayContains: uid).get());
-  static Stream<Circle?> circle(String id) =>
-      _circles.doc(id).snapshots().map((d) => d.exists ? Circle.fromDoc(d) : null);
+  /// Emits null when the circle is deleted or the user lost access (removed).
+  static Stream<Circle?> circle(String id) => _circles
+      .doc(id)
+      .snapshots()
+      .map<Circle?>((d) => d.exists ? Circle.fromDoc(d) : null)
+      .transform(StreamTransformer<Circle?, Circle?>.fromHandlers(
+        handleError: (e, st, sink) => sink.add(null),
+      ));
 
   static String _code() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -153,7 +205,7 @@ class Db {
     return List.generate(6, (_) => chars[r.nextInt(chars.length)]).join();
   }
 
-  static Future<String> createCircle(String name, Roadmap? roadmap) async {
+  static Future<String> createCircle(String name, Roadmap? roadmap, {required String type}) async {
     var code = _code();
     for (var i = 0; i < 5; i++) {
       final exists = (await _fs.collection('invites').doc(code).get()).exists;
@@ -164,8 +216,11 @@ class Db {
     final batch = _fs.batch();
     batch.set(ref, {
       'name': name,
+      'type': type,
       'ownerId': uid,
       'memberIds': [uid],
+      'adminIds': [uid],
+      'bannedIds': <String>[],
       'inviteCode': code,
       'roadmapId': roadmap?.id,
       'roadmapTitle': roadmap?.title ?? '',
@@ -188,21 +243,79 @@ class Db {
     try {
       await ref.update({'memberIds': FieldValue.arrayUnion([uid])});
     } on FirebaseException catch (e) {
-      // Already a member → the "adds exactly one" rule rejects the no-op update.
       if (e.code != 'permission-denied') rethrow;
     }
-    final circle = Circle.fromDoc(await ref.get());
-    if (circle.roadmapId != null) {
-      try {
-        await _roadmaps.doc(circle.roadmapId).update({'memberIds': FieldValue.arrayUnion([uid])});
-      } on FirebaseException catch (_) {/* already a member */}
+    final Circle circle;
+    try {
+      circle = Circle.fromDoc(await ref.get());
+    } on FirebaseException {
+      throw Exception('You can\'t join this circle. An admin may have removed you — ask them to add you back.');
     }
+    await ensureRoadmapAccess(circle);
     await _postSystem(cid, '$myName joined the circle 👋');
     return cid;
   }
 
+  /// Makes sure a circle member can open the circle's shared roadmap.
+  static Future<void> ensureRoadmapAccess(Circle c) async {
+    if (c.roadmapId == null) return;
+    try {
+      await _roadmaps.doc(c.roadmapId).update({'memberIds': FieldValue.arrayUnion([uid])});
+    } catch (_) {/* already a member */}
+  }
+
   static Future<void> leaveCircle(String cid) =>
       _circles.doc(cid).update({'memberIds': FieldValue.arrayRemove([uid])});
+
+  static Future<void> renameCircle(String cid, String name) => _circles.doc(cid).update({'name': name});
+  static Future<void> setCircleType(String cid, String type) => _circles.doc(cid).update({'type': type});
+
+  static Future<void> deleteCircle(Circle c) async {
+    final batch = _fs.batch();
+    batch.delete(_circles.doc(c.id));
+    await batch.commit();
+  }
+
+  /// Admin: removes a member and blocks them from rejoining with the invite code.
+  static Future<void> removeMember(Circle c, String memberId, String memberName) async {
+    await _circles.doc(c.id).update({
+      'memberIds': FieldValue.arrayRemove([memberId]),
+      'adminIds': FieldValue.arrayRemove([memberId]),
+      'bannedIds': FieldValue.arrayUnion([memberId]),
+    });
+    if (c.roadmapId != null) {
+      try {
+        await _roadmaps.doc(c.roadmapId).update({'memberIds': FieldValue.arrayRemove([memberId])});
+      } catch (_) {/* only the roadmap owner can do this */}
+    }
+    await _postSystem(c.id, '$memberName was removed by $myName');
+  }
+
+  /// Admin: adds someone who already has a StudyCircle account, by email.
+  static Future<String> addMemberByEmail(Circle c, String email) async {
+    final e = email.trim().toLowerCase();
+    var q = await _fs.collection('users').where('email', isEqualTo: e).limit(1).get();
+    if (q.docs.isEmpty && e != email.trim()) {
+      q = await _fs.collection('users').where('email', isEqualTo: email.trim()).limit(1).get();
+    }
+    if (q.docs.isEmpty) {
+      throw Exception('No StudyCircle account with $e. Ask them to sign up first, or share the invite code.');
+    }
+    final id = q.docs.first.id;
+    if (c.memberIds.contains(id)) throw Exception('They are already in this circle.');
+    final name = (q.docs.first.data()['name'] as String?) ?? e;
+    await _circles.doc(c.id).update({
+      'memberIds': FieldValue.arrayUnion([id]),
+      'bannedIds': FieldValue.arrayRemove([id]),
+    });
+    await _postSystem(c.id, '$name was added by $myName');
+    return name;
+  }
+
+  /// Owner: promote or demote an admin.
+  static Future<void> setAdmin(String cid, String memberId, bool admin) => _circles.doc(cid).update({
+        'adminIds': admin ? FieldValue.arrayUnion([memberId]) : FieldValue.arrayRemove([memberId]),
+      });
 
   // ───────────────────────── chat ─────────────────────────
   static CollectionReference<Map<String, dynamic>> _messages(String cid) =>
@@ -212,12 +325,14 @@ class Db {
       .orderBy('createdAt', descending: true)
       .limit(300)
       .snapshots()
-      .map((s) => s.docs.map(Message.fromDoc).toList());
+      .map((s) => s.docs.map(Message.fromDoc).toList())
+      .handleError((_) {});
 
-  static Future<void> _touch(String cid, String preview) => _circles.doc(cid).update({
-        'lastMessage': preview,
-        'lastAt': FieldValue.serverTimestamp(),
-      });
+  static Future<void> _touch(String cid, String preview) async {
+    try {
+      await _circles.doc(cid).update({'lastMessage': preview, 'lastAt': FieldValue.serverTimestamp()});
+    } catch (_) {}
+  }
 
   static Future<void> _postSystem(String cid, String text) async {
     await _messages(cid).add({
@@ -240,6 +355,11 @@ class Db {
     });
     await _touch(cid, '$myName: $text');
   }
+
+  static Future<void> editMessage(String cid, String mid, String text) =>
+      _messages(cid).doc(mid).update({'text': text, 'editedAt': FieldValue.serverTimestamp()});
+
+  static Future<void> deleteMessage(String cid, String mid) => _messages(cid).doc(mid).delete();
 
   static Future<void> createPoll(String cid, String question, List<String> options) async {
     await _messages(cid).add({
@@ -295,13 +415,51 @@ class Db {
         createdBy: uid);
   }
 
+  static Future<Session?> sessionById(String cid, String sid) async {
+    final d = await _sessions(cid).doc(sid).get();
+    return d.exists ? Session.fromDoc(cid, d) : null;
+  }
+
+  static Future<void> updateSession(Session s,
+      {required String title, required DateTime startsAt, required int durationMin, required String note}) async {
+    await _sessions(s.circleId).doc(s.id).update({
+      'title': title,
+      'startsAt': Timestamp.fromDate(startsAt),
+      'durationMin': durationMin,
+      'note': note,
+    });
+    final msgs = await _messages(s.circleId).where('sessionId', isEqualTo: s.id).get();
+    for (final m in msgs.docs) {
+      try {
+        await m.reference.update({
+          'text': title,
+          'startsAt': Timestamp.fromDate(startsAt),
+          'durationMin': durationMin,
+          'editedAt': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {}
+    }
+    await _touch(s.circleId, '✏️ Class updated: $title');
+  }
+
+  static Future<void> deleteSession(String cid, String sid) async {
+    await _sessions(cid).doc(sid).delete();
+    final msgs = await _messages(cid).where('sessionId', isEqualTo: sid).get();
+    for (final m in msgs.docs) {
+      try {
+        await m.reference.delete();
+      } catch (_) {}
+    }
+  }
+
   static Query<Map<String, dynamic>> _upcoming(String cid) => _sessions(cid)
       .where('startsAt', isGreaterThan: Timestamp.fromDate(DateTime.now().subtract(const Duration(hours: 3))))
       .orderBy('startsAt');
 
   static Stream<List<Session>> upcomingSessions(String cid) => _upcoming(cid)
       .snapshots()
-      .map((s) => s.docs.map((d) => Session.fromDoc(cid, d)).where((x) => x.endsAt.isAfter(DateTime.now())).toList());
+      .map((s) => s.docs.map((d) => Session.fromDoc(cid, d)).where((x) => x.endsAt.isAfter(DateTime.now())).toList())
+      .handleError((_) {});
 
   static Future<List<Session>> upcomingSessionsOnce(String cid) async => (await _upcoming(cid).get())
       .docs
@@ -314,9 +472,11 @@ class Db {
     final circles = await myCirclesOnce();
     final out = <(Session, String)>[];
     for (final c in circles) {
-      for (final s in await upcomingSessionsOnce(c.id)) {
-        out.add((s, c.name));
-      }
+      try {
+        for (final s in await upcomingSessionsOnce(c.id)) {
+          out.add((s, c.name));
+        }
+      } catch (_) {}
     }
     out.sort((a, b) => a.$1.startsAt.compareTo(b.$1.startsAt));
     return out;
@@ -331,6 +491,7 @@ class Db {
     required Section section,
     required int score,
     required int total,
+    required List<String> questions,
   }) =>
       _exams.add({
         'roadmapId': roadmap.id,
@@ -339,6 +500,7 @@ class Db {
         'sectionTitle': section.title,
         'score': score,
         'total': total,
+        'questions': questions,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -346,6 +508,14 @@ class Db {
       .where('roadmapId', isEqualTo: rid)
       .snapshots()
       .map((s) => s.docs.map(ExamResult.fromDoc).toList());
+
+  /// Questions already asked in earlier attempts of this section (newest first).
+  static Future<List<String>> pastQuestions(String rid, String sectionId) async {
+    final s = await _exams.where('roadmapId', isEqualTo: rid).get();
+    final attempts = s.docs.map(ExamResult.fromDoc).where((e) => e.sectionId == sectionId).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return [for (final a in attempts) ...a.questions];
+  }
 
   static Future<List<ExamResult>> recentExams({int limit = 5}) async {
     final s = await _exams.orderBy('createdAt', descending: true).limit(limit).get();

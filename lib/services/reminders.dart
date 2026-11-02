@@ -51,11 +51,14 @@ class Reminders {
 
   static Future<void> syncSessions() async {
     try {
+      final keep = <int>{};
       for (final c in await Db.myCirclesOnce()) {
         for (final s in await Db.upcomingSessionsOnce(c.id)) {
           await Notifs.scheduleSession(s, c.name);
+          keep.addAll(Notifs.sessionIds(s.circleId, s.id));
         }
       }
+      await Notifs.keepOnlySessions(keep);
     } catch (e) {
       debugPrint('Session alarm sync failed: $e');
     }

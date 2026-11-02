@@ -22,6 +22,7 @@ class _ExamScreenState extends State<ExamScreen> {
   List<ExamQuestion> _qs = [];
   List<int?> _answers = [];
   int _i = 0;
+  final List<String> _seenHere = []; // questions from attempts in this visit
 
   @override
   void initState() {
@@ -35,7 +36,12 @@ class _ExamScreenState extends State<ExamScreen> {
       _i = 0;
     });
     try {
-      final qs = await AI.generateExam(widget.roadmap, widget.section);
+      var past = <String>[];
+      try {
+        past = await Db.pastQuestions(widget.roadmap.id, widget.section.id);
+      } catch (_) {}
+      final qs = await AI.generateExam(widget.roadmap, widget.section,
+          avoid: [..._seenHere.reversed, ...past.where((q) => !_seenHere.contains(q))]);
       if (!mounted) return;
       setState(() {
         _qs = qs;
@@ -61,8 +67,15 @@ class _ExamScreenState extends State<ExamScreen> {
 
   Future<void> _finish() async {
     setState(() => _stage = _Stage.result);
+    final questions = _qs.map((q) => q.question).toList();
+    _seenHere.addAll(questions);
     try {
-      await Db.saveExam(roadmap: widget.roadmap, section: widget.section, score: _score, total: _qs.length);
+      await Db.saveExam(
+          roadmap: widget.roadmap,
+          section: widget.section,
+          score: _score,
+          total: _qs.length,
+          questions: questions);
     } catch (_) {}
   }
 
@@ -71,17 +84,17 @@ class _ExamScreenState extends State<ExamScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Section exam'),
+          Text('Section exam'),
           Text(widget.section.title,
-              style: const TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w500)),
+              style: TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w500)),
         ]),
       ),
       body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
+        duration: Duration(milliseconds: 300),
         child: switch (_stage) {
-          _Stage.loading => const _Preparing(key: ValueKey('loading')),
+          _Stage.loading => _Preparing(key: ValueKey('loading')),
           _Stage.error => EmptyState(
-              key: const ValueKey('error'),
+              key: ValueKey('error'),
               icon: Icons.error_outline_rounded,
               title: 'Could not prepare the exam',
               subtitle: _error,
@@ -102,21 +115,21 @@ class _ExamScreenState extends State<ExamScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          child: ListView(padding: const EdgeInsets.fromLTRB(20, 8, 20, 20), children: [
+          child: ListView(padding: EdgeInsets.fromLTRB(20, 8, 20, 20), children: [
             Row(children: [
               Text('Question ${_i + 1} of ${_qs.length}',
-                  style: const TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600)),
-              const Spacer(),
-              const Pill('Pass ≥ 60%', color: AppColors.warning),
+                  style: TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600)),
+              Spacer(),
+              Pill('Pass ≥ 60%', color: AppColors.warning),
             ]),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             GradientBar(value: (_i + 1) / _qs.length, height: 6),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             SelectableText(q.question, style: display(20, weight: FontWeight.w600).copyWith(height: 1.4)),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             for (var o = 0; o < q.options.length; o++)
               Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: EdgeInsets.only(bottom: 10),
                 child: _OptionTile(
                   letter: String.fromCharCode(65 + o),
                   text: q.options[o],
@@ -129,11 +142,11 @@ class _ExamScreenState extends State<ExamScreen> {
         SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: Row(children: [
               if (_i > 0) ...[
                 GhostButton(label: 'Back', icon: Icons.arrow_back, onPressed: () => setState(() => _i--)),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
               ],
               Expanded(
                 child: GradientButton(
@@ -162,11 +175,11 @@ class _ExamScreenState extends State<ExamScreen> {
     final pct = total == 0 ? 0.0 : _score / total;
     final passed = pct >= 0.6;
     return ListView(
-      key: const ValueKey('result'),
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+      key: ValueKey('result'),
+      padding: EdgeInsets.fromLTRB(20, 8, 20, 40),
       children: [
         GlassCard(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24),
           child: Column(children: [
             ProgressRing(
               value: pct,
@@ -174,23 +187,23 @@ class _ExamScreenState extends State<ExamScreen> {
               stroke: 12,
               center: Column(mainAxisSize: MainAxisSize.min, children: [
                 Text(gradeFor(pct), style: display(44, color: passed ? AppColors.success : AppColors.danger)),
-                Text('$_score / $total', style: const TextStyle(color: AppColors.muted)),
+                Text('$_score / $total', style: TextStyle(color: AppColors.muted)),
               ]),
             ),
-            const SizedBox(height: 18),
+            SizedBox(height: 18),
             Text(passed ? 'Passed 🎓' : 'Not yet — keep going', style: display(22)),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             Text(
               passed
                   ? 'Section "${widget.section.title}" is officially cleared.'
                   : 'Review the explanations below, revisit your notes, then retake with fresh questions.',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.muted, height: 1.4),
+              style: TextStyle(color: AppColors.muted, height: 1.4),
             ),
-            const SizedBox(height: 18),
+            SizedBox(height: 18),
             Row(children: [
               Expanded(child: GhostButton(label: 'Retake', icon: Icons.refresh_rounded, onPressed: _generate)),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: GradientButton(
                     label: 'Done', icon: Icons.check_rounded, onPressed: () => Navigator.pop(context)),
@@ -198,7 +211,7 @@ class _ExamScreenState extends State<ExamScreen> {
             ]),
           ]),
         ),
-        const SectionLabel('Review'),
+        SectionLabel('Review'),
         for (var i = 0; i < _qs.length; i++) _review(i),
       ],
     );
@@ -209,22 +222,22 @@ class _ExamScreenState extends State<ExamScreen> {
     final mine = _answers[i];
     final right = mine == q.answer;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.only(bottom: 10),
       child: GlassCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Icon(right ? Icons.check_circle_rounded : Icons.cancel_rounded,
                 color: right ? AppColors.success : AppColors.danger, size: 20),
-            const SizedBox(width: 10),
-            Expanded(child: Text('${i + 1}. ${q.question}', style: const TextStyle(fontWeight: FontWeight.w600))),
+            SizedBox(width: 10),
+            Expanded(child: Text('${i + 1}. ${q.question}', style: TextStyle(fontWeight: FontWeight.w600))),
           ]),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           if (!right && mine != null)
-            Text('Your answer: ${q.options[mine]}', style: const TextStyle(color: AppColors.danger, fontSize: 13)),
-          Text('Correct: ${q.options[q.answer]}', style: const TextStyle(color: AppColors.success, fontSize: 13)),
+            Text('Your answer: ${q.options[mine]}', style: TextStyle(color: AppColors.danger, fontSize: 13)),
+          Text('Correct: ${q.options[q.answer]}', style: TextStyle(color: AppColors.success, fontSize: 13)),
           if (q.explanation.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(q.explanation, style: const TextStyle(color: AppColors.muted, fontSize: 13, height: 1.4)),
+            SizedBox(height: 8),
+            Text(q.explanation, style: TextStyle(color: AppColors.muted, fontSize: 13, height: 1.4)),
           ],
         ]),
       ),
@@ -242,7 +255,7 @@ class _OptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+      duration: Duration(milliseconds: 200),
       decoration: BoxDecoration(
         color: selected ? AppColors.primary.withValues(alpha: 0.18) : AppColors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -252,7 +265,7 @@ class _OptionTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(14),
           child: Row(children: [
             Container(
               width: 32,
@@ -263,10 +276,10 @@ class _OptionTile extends StatelessWidget {
                 gradient: selected ? AppColors.gradient : null,
                 color: selected ? null : AppColors.surface2,
               ),
-              child: Text(letter, style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white)),
+              child: Text(letter, style: TextStyle(fontWeight: FontWeight.w800, color: selected ? Colors.white : AppColors.text)),
             ),
-            const SizedBox(width: 14),
-            Expanded(child: Text(text, style: const TextStyle(fontSize: 15, height: 1.35))),
+            SizedBox(width: 14),
+            Expanded(child: Text(text, style: TextStyle(fontSize: 15, height: 1.35))),
           ]),
         ),
       ),
@@ -280,15 +293,15 @@ class _Preparing extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const SizedBox(
+        SizedBox(
           width: 64,
           height: 64,
           child: CircularProgressIndicator(strokeWidth: 5, color: AppColors.primary),
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: 24),
         Text('Your examiner is writing questions…', style: display(18)),
-        const SizedBox(height: 6),
-        const Text('Fresh questions every attempt.', style: TextStyle(color: AppColors.muted)),
+        SizedBox(height: 6),
+        Text('Fresh questions every attempt.', style: TextStyle(color: AppColors.muted)),
       ]),
     );
   }

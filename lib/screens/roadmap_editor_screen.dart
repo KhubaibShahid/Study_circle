@@ -26,12 +26,12 @@ class RoadmapEditorScreen extends StatefulWidget {
   final String initialDescription;
   final List<Section> initialSections;
 
-  const RoadmapEditorScreen({
+  RoadmapEditorScreen({
     super.key,
     this.roadmapId,
     this.initialTitle = '',
     this.initialDescription = '',
-    this.initialSections = const [],
+    this.initialSections = [],
   });
 
   factory RoadmapEditorScreen.edit(Roadmap r) => RoadmapEditorScreen(
@@ -124,37 +124,37 @@ class _RoadmapEditorScreenState extends State<RoadmapEditorScreen> {
         title: Text(widget.roadmapId == null ? 'New roadmap' : 'Edit roadmap'),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 12),
+            padding: EdgeInsets.only(right: 12),
             child: _saving
-                ? const Padding(
+                ? Padding(
                     padding: EdgeInsets.all(14),
                     child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
                 : TextButton.icon(
                     onPressed: _save,
-                    icon: const Icon(Icons.check_rounded),
-                    label: const Text('Save', style: TextStyle(fontWeight: FontWeight.w700))),
+                    icon: Icon(Icons.check_rounded),
+                    label: Text('Save', style: TextStyle(fontWeight: FontWeight.w700))),
           ),
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+        padding: EdgeInsets.fromLTRB(20, 8, 20, 40),
         children: [
           TextField(
             controller: _title,
             style: display(20),
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(hintText: 'Roadmap title, e.g. "Full-stack Mastery"'),
+            decoration: InputDecoration(hintText: 'Roadmap title, e.g. "Full-stack Mastery"'),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           TextField(
             controller: _desc,
             maxLines: 3,
             minLines: 1,
-            decoration: const InputDecoration(hintText: 'Why are you learning this? (optional)'),
+            decoration: InputDecoration(hintText: 'Why are you learning this? (optional)'),
           ),
           SectionLabel('${_sections.length} sections · $topicCount topics'),
           for (var i = 0; i < _sections.length; i++) _sectionEditor(i),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           GhostButton(label: 'Add section', icon: Icons.add, onPressed: _addSection),
         ],
       ),
@@ -164,9 +164,9 @@ class _RoadmapEditorScreenState extends State<RoadmapEditorScreen> {
   Widget _sectionEditor(int i) {
     final s = _sections[i];
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: EdgeInsets.only(bottom: 14),
       child: GlassCard(
-        padding: const EdgeInsets.fromLTRB(14, 14, 6, 10),
+        padding: EdgeInsets.fromLTRB(14, 14, 6, 10),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Container(
@@ -174,18 +174,18 @@ class _RoadmapEditorScreenState extends State<RoadmapEditorScreen> {
               height: 30,
               alignment: Alignment.center,
               decoration: BoxDecoration(gradient: AppColors.gradient, borderRadius: BorderRadius.circular(10)),
-              child: Text('${i + 1}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+              child: Text('${i + 1}', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             Expanded(
               child: TextField(
                 controller: s.ctl,
-                style: const TextStyle(fontWeight: FontWeight.w700),
-                decoration: const InputDecoration(hintText: 'Section title', isDense: true),
+                style: TextStyle(fontWeight: FontWeight.w700),
+                decoration: InputDecoration(hintText: 'Section title', isDense: true),
               ),
             ),
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, color: AppColors.muted),
+              icon: Icon(Icons.more_vert, color: AppColors.muted),
               onSelected: (v) => setState(() {
                 if (v == 'up' && i > 0) {
                   _sections.insert(i - 1, _sections.removeAt(i));
@@ -195,26 +195,26 @@ class _RoadmapEditorScreenState extends State<RoadmapEditorScreen> {
                   _sections.removeAt(i);
                 }
               }),
-              itemBuilder: (_) => const [
+              itemBuilder: (_) => [
                 PopupMenuItem(value: 'up', child: Text('Move up')),
                 PopupMenuItem(value: 'down', child: Text('Move down')),
                 PopupMenuItem(value: 'delete', child: Text('Delete section')),
               ],
             ),
           ]),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           for (var j = 0; j < s.topics.length; j++)
             Padding(
-              padding: const EdgeInsets.only(left: 40, bottom: 6),
+              padding: EdgeInsets.only(left: 40, bottom: 6),
               child: Row(children: [
-                const Icon(Icons.circle_outlined, size: 14, color: AppColors.muted),
-                const SizedBox(width: 8),
+                Icon(Icons.circle_outlined, size: 14, color: AppColors.muted),
+                SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: s.topics[j].ctl,
                     textCapitalization: TextCapitalization.sentences,
                     onSubmitted: (_) => setState(() => s.topics.insert(j + 1, _EditTopic(Db.newId(), ''))),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: 'Topic',
                       isDense: true,
                       fillColor: Colors.transparent,
@@ -222,17 +222,17 @@ class _RoadmapEditorScreenState extends State<RoadmapEditorScreen> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.muted),
+                  icon: Icon(Icons.close_rounded, size: 18, color: AppColors.muted),
                   onPressed: () => setState(() => s.topics.removeAt(j)),
                 ),
               ]),
             ),
           Padding(
-            padding: const EdgeInsets.only(left: 30),
+            padding: EdgeInsets.only(left: 30),
             child: TextButton.icon(
               onPressed: () => setState(() => s.topics.add(_EditTopic(Db.newId(), ''))),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add topic'),
+              icon: Icon(Icons.add, size: 18),
+              label: Text('Add topic'),
             ),
           ),
         ]),

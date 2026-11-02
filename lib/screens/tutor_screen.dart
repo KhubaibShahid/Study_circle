@@ -69,7 +69,7 @@ class _TutorScreenState extends State<TutorScreen> with AutomaticKeepAliveClient
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scroll.hasClients) {
         _scroll.animateTo(_scroll.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+            duration: Duration(milliseconds: 300), curve: Curves.easeOut);
       }
     });
   }
@@ -115,16 +115,16 @@ class _TutorScreenState extends State<TutorScreen> with AutomaticKeepAliveClient
             width: 34,
             height: 34,
             decoration: BoxDecoration(gradient: AppColors.warmGradient, borderRadius: BorderRadius.circular(11)),
-            child: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
+            child: Icon(Icons.auto_awesome, color: Colors.white, size: 18),
           ),
-          const SizedBox(width: 10),
-          const Text('AI Tutor'),
+          SizedBox(width: 10),
+          Text('AI Tutor'),
         ]),
         actions: [
           if (_turns.isNotEmpty)
             IconButton(
               tooltip: 'New chat',
-              icon: const Icon(Icons.refresh_rounded),
+              icon: Icon(Icons.refresh_rounded),
               onPressed: () => setState(_turns.clear),
             ),
         ],
@@ -135,11 +135,11 @@ class _TutorScreenState extends State<TutorScreen> with AutomaticKeepAliveClient
             height: 46,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: 16),
               children: [
                 for (final r in _roadmaps)
                   Padding(
-                    padding: const EdgeInsets.only(right: 8),
+                    padding: EdgeInsets.only(right: 8),
                     child: ChoiceChip(
                       label: Text(r.title),
                       selected: _roadmap?.id == r.id,
@@ -154,38 +154,38 @@ class _TutorScreenState extends State<TutorScreen> with AutomaticKeepAliveClient
           ),
         Expanded(
           child: _turns.isEmpty
-              ? ListView(padding: const EdgeInsets.all(20), children: [
-                  const SizedBox(height: 20),
+              ? ListView(padding: EdgeInsets.all(20), children: [
+                  SizedBox(height: 20),
                   Center(
                     child: Container(
                       width: 80,
                       height: 80,
                       decoration:
                           BoxDecoration(gradient: AppColors.warmGradient, borderRadius: BorderRadius.circular(26)),
-                      child: const Icon(Icons.psychology_alt_rounded, color: Colors.white, size: 42),
+                      child: Icon(Icons.psychology_alt_rounded, color: Colors.white, size: 42),
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  SizedBox(height: 18),
                   Text('Your personal teacher', textAlign: TextAlign.center, style: display(22)),
-                  const SizedBox(height: 6),
+                  SizedBox(height: 6),
                   Text(
                     _roadmap == null
                         ? 'Ask anything. Create a roadmap so I can teach around your syllabus.'
                         : 'I know your "${_roadmap!.title}" roadmap and what you have finished. '
                             'English, Urdu or Hinglish — all fine.',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.muted, height: 1.45),
+                    style: TextStyle(color: AppColors.muted, height: 1.45),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   for (final s in suggestions)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
+                      padding: EdgeInsets.only(bottom: 10),
                       child: GlassCard(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         onTap: () => _send(s),
                         child: Row(children: [
-                          const Icon(Icons.bolt_rounded, color: AppColors.warning, size: 20),
-                          const SizedBox(width: 10),
+                          Icon(Icons.bolt_rounded, color: AppColors.warning, size: 20),
+                          SizedBox(width: 10),
                           Expanded(child: Text(s)),
                         ]),
                       ),
@@ -193,10 +193,10 @@ class _TutorScreenState extends State<TutorScreen> with AutomaticKeepAliveClient
                 ])
               : ListView.builder(
                   controller: _scroll,
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  padding: EdgeInsets.fromLTRB(14, 12, 14, 12),
                   itemCount: _turns.length + (_thinking ? 1 : 0),
                   itemBuilder: (_, i) {
-                    if (i == _turns.length) return const _Typing();
+                    if (i == _turns.length) return _Typing();
                     return _Bubble(turn: _turns[i]);
                   },
                 ),
@@ -204,8 +204,8 @@ class _TutorScreenState extends State<TutorScreen> with AutomaticKeepAliveClient
         SafeArea(
           top: false,
           child: Container(
-            padding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
-            decoration: const BoxDecoration(
+            padding: EdgeInsets.fromLTRB(14, 8, 10, 8),
+            decoration: BoxDecoration(
               color: AppColors.surface,
               border: Border(top: BorderSide(color: AppColors.border)),
             ),
@@ -216,17 +216,17 @@ class _TutorScreenState extends State<TutorScreen> with AutomaticKeepAliveClient
                   minLines: 1,
                   maxLines: 5,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(hintText: 'Ask about any topic…', isDense: true),
+                  decoration: InputDecoration(hintText: 'Ask about any topic…', isDense: true),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               GestureDetector(
                 onTap: () => _send(_input.text),
                 child: Container(
                   width: 46,
                   height: 46,
-                  decoration: const BoxDecoration(shape: BoxShape.circle, gradient: AppColors.warmGradient),
-                  child: const Icon(Icons.arrow_upward_rounded, color: Colors.white),
+                  decoration: BoxDecoration(shape: BoxShape.circle, gradient: AppColors.warmGradient),
+                  child: Icon(Icons.arrow_upward_rounded, color: Colors.white),
                 ),
               ),
             ]),
@@ -247,30 +247,31 @@ class _Bubble extends StatelessWidget {
     return Align(
       alignment: me ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
+        margin: EdgeInsets.only(bottom: 10),
         constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * (me ? 0.8 : 0.9)),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
           gradient: me ? AppColors.gradient : null,
           color: me ? null : AppColors.surface,
           border: me ? null : Border.all(color: AppColors.border),
           borderRadius: BorderRadius.circular(18),
         ),
-        child: SelectableText(turn.text, style: const TextStyle(fontSize: 15, height: 1.5)),
+        child: SelectableText(turn.text,
+            style: TextStyle(fontSize: 15, height: 1.5, color: me ? Colors.white : AppColors.text)),
       ),
     );
   }
 }
 
 class _Typing extends StatefulWidget {
-  const _Typing();
+  _Typing();
   @override
   State<_Typing> createState() => _TypingState();
 }
 
 class _TypingState extends State<_Typing> with SingleTickerProviderStateMixin {
   late final AnimationController _c =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
+      AnimationController(vsync: this, duration: Duration(milliseconds: 1200))..repeat();
 
   @override
   void dispose() {
@@ -283,8 +284,8 @@ class _TypingState extends State<_Typing> with SingleTickerProviderStateMixin {
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        margin: EdgeInsets.only(bottom: 10),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: AppColors.surface,
           border: Border.all(color: AppColors.border),
@@ -295,7 +296,7 @@ class _TypingState extends State<_Typing> with SingleTickerProviderStateMixin {
           builder: (_, __) => Row(mainAxisSize: MainAxisSize.min, children: [
             for (var i = 0; i < 3; i++)
               Container(
-                margin: const EdgeInsets.symmetric(horizontal: 3),
+                margin: EdgeInsets.symmetric(horizontal: 3),
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
