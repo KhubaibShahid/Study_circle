@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -43,9 +46,19 @@ jobs:
         run: dart run tool/patch_android.dart
 
       - name: Build APK
-        run: flutter build apk --release
+        run: |
+          flutter build apk --release
+          cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/StudyCircle.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: StudyCircle-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Publish release with APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: StudyCircle v1.0.${{ github.run_number }}
+          body: Install StudyCircle.apk on your Android phone (allow "Install unknown apps").
+          files: build/app/outputs/flutter-apk/StudyCircle.apk
