@@ -42,6 +42,9 @@ jobs:
             exit 1
           fi
 
+      - name: Generate app icons
+        run: dart run flutter_launcher_icons
+
       - name: Patch Android (alarms, desugaring, Firebase plugin)
         run: dart run tool/patch_android.dart
 

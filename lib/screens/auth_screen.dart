@@ -77,12 +77,9 @@ class _AuthScreenState extends State<AuthScreen> {
           child: ListView(
             padding: EdgeInsets.fromLTRB(24, 48, 24, 24),
             children: [
-              Container(
-                width: 64,
-                height: 64,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(gradient: AppColors.gradient, borderRadius: BorderRadius.circular(20)),
-                child: Icon(Icons.school_rounded, color: Colors.white, size: 34),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Image.asset('assets/logo.png', width: 84, height: 84, filterQuality: FilterQuality.high),
               ),
               SizedBox(height: 28),
               Text('StudyCircle', style: display(38)),

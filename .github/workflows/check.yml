@@ -16,5 +16,6 @@ jobs:
           cache: true
       - run: flutter create --org com.khubaib --project-name study_circle --platforms android .
       - run: flutter pub get
+      - run: dart run flutter_launcher_icons
       - name: Analyze (errors fail the check)
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
